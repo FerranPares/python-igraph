@@ -1112,7 +1112,23 @@ class Graph(GraphBase):
     def community_fluid_communities(self, k):
         """community_fluid_communities(k)
 
-        TODO: Introductory text about Fluid Communities!
+        The algorithm is based on the simple idea of fluids interacting
+        in an environment, expanding and pushing each other. It's
+        initialization is random, so found communities may vary on different
+        executions.
+
+        The algorithm proceeds as follows. First each of the initial k
+        communities is initialized in a random vertex in the graph. Then the
+        algorithm iterates over all vertices in a random order, updating the
+        community of each vertex based on its own community and the communities
+        of its neighbours. This process is performed several times until
+        convergence.
+        At all times, each community has a total density of 1, which is equally
+        distributed among the vertices it contains. If a vertex changes of
+        community, vertex densities of affected communities are adjusted
+        immediately. When a complete iteration over all vertices is done, such
+        that no vertex changes the community it belongs to, the algorithm has
+        converged and returns.
         @param k: number of communities to be found.
         @return: an appropriate L{VertexClustering} object.
 
@@ -1121,7 +1137,6 @@ class Graph(GraphBase):
           Community Detection Algorithm. 2017.
           U{https://arxiv.org/abs/1703.09307}.
         """
-        # TODO: Finish Docstring!
         cl = GraphBase.community_fluid_communities(self, k)
         return VertexClustering(self, cl)
 
