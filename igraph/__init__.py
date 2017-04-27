@@ -1109,6 +1109,23 @@ class Graph(GraphBase):
         return VertexClustering(self, membership, modularity = q)
 
 
+    def community_fluid_communities(self, k):
+        """community_fluid_communities(k)
+
+        TODO: Introductory text about Fluid Communities!
+        @param k: number of communities to be found.
+        @return: an appropriate L{VertexClustering} object.
+
+        @newfield ref: Reference
+        @ref: Pares, F. and Garcia-Gasulla, D.: Fluid Communities: A
+          Community Detection Algorithm. 2017.
+          U{https://arxiv.org/abs/1703.09307}.
+        """
+        # TODO: Finish Docstring!
+        cl = GraphBase.community_fluid_communities(self, k)
+        return VertexClustering(self, cl)
+
+
     def community_label_propagation(self, weights = None, initial = None, \
             fixed = None):
         """community_label_propagation(weights=None, initial=None, fixed=None)

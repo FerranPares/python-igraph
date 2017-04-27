@@ -11246,6 +11246,33 @@ PyObject *igraphmodule_Graph_community_infomap(igraphmodule_GraphObject * self,
   return Py_BuildValue("Nd", res, (double)codelength);
 }
 
+/**
+ * The fluid communities algorithm of Pares & Garcia-Gasulla et al.
+ */
+PyObject *igraphmodule_Graph_community_fluid_communities(
+    igraphmodule_GraphObject *self, PyObject *args, PyObject *kwds)
+{
+  static char *kwlist[] = { "k", NULL };
+  PyObject *result;
+  igraph_vector_t membership;
+  int k;
+  
+  if (!PyArg_ParseTupleAndKeywords(args, kwds, "|i", kwlist, &k)) {
+    return NULL; 
+  }
+
+  igraph_vector_init(&membership, igraph_vcount(&self->g));
+  if (igraph_community_fluid_communities(&self->g, &k, 
+        &membership, 0)) { 
+    igraph_vector_destroy(&membership);
+    return igraphmodule_handle_igraph_error();
+  }
+
+  result=igraphmodule_vector_t_to_PyList(&membership, IGRAPHMODULE_TYPE_INT);
+  igraph_vector_destroy(&membership);
+  
+  return result;
+}
 
 /**
  * The label propagation algorithm of Raghavan et al
@@ -15283,6 +15310,18 @@ struct PyMethodDef igraphmodule_Graph_methods[] = {
    "  U{http://arxiv.org/abs/0707.0609}\n"
    "@ref: M. Rosvall, D. Axelsson and C. T. Bergstrom: I{The map equation}.\n"
    "  Eur Phys J Special Topics 178, 13 (2009). U{http://arxiv.org/abs/0906.1405}\n"
+  },
+  {"community_fluid_communities",
+   (PyCFunction) igraphmodule_Graph_community_fluid_communities,
+   METH_VARARGS | METH_KEYWORDS,
+   "community_fluid_communities(k)\n\n"
+   "@param k: number of communities to be found.\n"
+   "@return: the resulting membership vector\n"
+   "\n"
+   "@newfield ref: Reference\n"
+   "@ref: Parés, F. and Garcia-Gasulla, D.: Fluid Communities: A\n"
+   "  Community Detection Algorithm. 2017.\n"
+   "  U{https://arxiv.org/abs/1703.09307}.\n"
   },
   {"community_label_propagation",
    (PyCFunction) igraphmodule_Graph_community_label_propagation,
