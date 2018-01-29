@@ -176,7 +176,7 @@ void igraphmodule_Graph_dealloc(igraphmodule_GraphObject * self)
 
   igraph_destroy(&self->g);
 
-  if (PyCallable_Check(self->destructor)) {
+  if (self->destructor != NULL && PyCallable_Check(self->destructor)) {
     r = PyObject_CallObject(self->destructor, NULL);
     if (r) {
       Py_DECREF(r);
@@ -9760,6 +9760,48 @@ PyObject *igraphmodule_Graph_unfold_tree(igraphmodule_GraphObject * self,
 }
 
 /**********************************************************************
+ * Dominator                                                          *
+ **********************************************************************/
+
+/** \ingroup python_interface_graph
+ * \brief Calculates the dominator tree for the graph
+ */
+PyObject *igraphmodule_Graph_dominator(igraphmodule_GraphObject * self,
+                                           PyObject * args, PyObject * kwds)
+{
+  static char *kwlist[] = { "vid", "mode", NULL };
+  PyObject *list = Py_None;
+  PyObject *mode_o = Py_None;
+  long int root = -1;
+  igraph_vector_t dom;
+  igraph_neimode_t mode = IGRAPH_OUT;
+  int res ;
+
+  if (!PyArg_ParseTupleAndKeywords(args, kwds, "l|O", kwlist, &root, &mode_o)) {
+    return NULL;
+  }
+
+  if (igraphmodule_PyObject_to_neimode_t(mode_o, &mode)) {
+    return NULL;
+  }
+  if (mode == IGRAPH_ALL) {
+    mode = IGRAPH_OUT;
+  }
+
+  if (igraph_vector_init(&dom, 0)) {
+    return NULL;
+  }
+  res = igraph_dominator_tree(&self->g, root, &dom, NULL, NULL, mode);
+  if(res) {
+    igraph_vector_destroy(&dom);
+    return NULL;
+  }
+  list = igraphmodule_vector_t_to_PyList(&dom, IGRAPHMODULE_TYPE_INT);
+  igraph_vector_destroy(&dom);
+  return list;
+}
+
+/**********************************************************************
  * Maximum flows                                                      *
  **********************************************************************/
 
@@ -11009,7 +11051,7 @@ PyObject *igraphmodule_Graph_community_edge_betweenness(igraphmodule_GraphObject
         /* edge_betweenness = */ 0,
         /* merges = */ &merges,
         /* bridges = */ 0,
-        /* modularity = */ &q,
+        /* modularity = */ weights ? 0 : &q,
         /* membership = */ 0,
         PyObject_IsTrue(directed),
         weights)) {
@@ -11026,11 +11068,18 @@ PyObject *igraphmodule_Graph_community_edge_betweenness(igraphmodule_GraphObject
     igraph_vector_destroy(weights); free(weights);
   }
 
-  qs=igraphmodule_vector_t_to_PyList(&q, IGRAPHMODULE_TYPE_FLOAT);
-  igraph_vector_destroy(&q);
-  if (!qs) {
-    igraph_matrix_destroy(&merges);
-    return NULL;
+  if (weights == 0) {
+    /* Calculate modularity vector only in the unweighted case as we don't
+     * calculate modularities for the weighted case */
+    qs=igraphmodule_vector_t_to_PyList(&q, IGRAPHMODULE_TYPE_FLOAT);
+    igraph_vector_destroy(&q);
+    if (!qs) {
+      igraph_matrix_destroy(&merges);
+      return NULL;
+    }
+  } else {
+    qs = Py_None;
+    Py_INCREF(qs);
   }
 
   ms=igraphmodule_matrix_t_to_PyList(&merges, IGRAPHMODULE_TYPE_INT);
@@ -11790,7 +11839,8 @@ struct PyMethodDef igraphmodule_Graph_methods[] = {
    "  them).\n"
    "@param loops: whether self-loops should be counted.\n"
    "@param weights: edge weights to be used. Can be a sequence or iterable or\n"
-   "  even an edge attribute name.\n"
+   "  even an edge attribute name. ``None`` means to treat the graph as\n"
+   "  unweighted, falling back to ordinary degree calculations.\n"
   },
 
   /* interface to igraph_is_loop */
@@ -13141,7 +13191,7 @@ struct PyMethodDef igraphmodule_Graph_methods[] = {
    "For each vertex specified by I{vertices}, returns the\n"
    "vertices reachable from that vertex in at most I{order} steps. If\n"
    "I{mindist} is larger than zero, vertices that are reachable in less\n"
-   "than I{mindist] steps are excluded.\n\n"
+   "than I{mindist} steps are excluded.\n\n"
    "@param vertices: a single vertex ID or a list of vertex IDs, or\n"
    "  C{None} meaning all the vertices in the graph.\n"
    "@param order: the order of the neighborhood, i.e. the maximum number of\n"
@@ -13169,7 +13219,7 @@ struct PyMethodDef igraphmodule_Graph_methods[] = {
    "For each vertex specified by I{vertices}, returns the number of\n"
    "vertices reachable from that vertex in at most I{order} steps. If\n"
    "I{mindist} is larger than zero, vertices that are reachable in less\n"
-   "than I{mindist] steps are excluded.\n\n"
+   "than I{mindist} steps are excluded.\n\n"
    "@param vertices: a single vertex ID or a list of vertex IDs, or\n"
    "  C{None} meaning all the vertices in the graph.\n"
    "@param order: the order of the neighborhood, i.e. the maximum number of\n"
@@ -14923,6 +14973,18 @@ struct PyMethodDef igraphmodule_Graph_methods[] = {
    "Creates the union of two (or more) graphs.\n\n"
    "@param graphs: the list of graphs to be united with\n"
    "  the current one.\n"},
+
+  /**********************/
+  /* DOMINATORS         */
+  /**********************/
+  {"dominator", (PyCFunction) igraphmodule_Graph_dominator,
+   METH_VARARGS | METH_KEYWORDS,
+   "dominator(vid, mode=)\n\n"
+   "Returns the dominator tree from the given root node"
+   "@param vid: the root vertex ID\n"
+   "@param mode: either L{IN} or L{OUT}\n"
+   "@return: a list containing the dominator tree for the current graph."
+  },
 
   /*****************/
   /* MAXIMUM FLOWS */
