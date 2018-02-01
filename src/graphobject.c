@@ -11311,7 +11311,7 @@ PyObject *igraphmodule_Graph_community_fluid_communities(
   }
 
   igraph_vector_init(&membership, igraph_vcount(&self->g));
-  if (igraph_community_fluid_communities(&self->g, &k, 
+  if (igraph_community_fluid_communities(&self->g, k, 
         &membership, 0)) { 
     igraph_vector_destroy(&membership);
     return igraphmodule_handle_igraph_error();
